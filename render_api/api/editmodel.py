@@ -163,47 +163,13 @@ def InsertLogo(file_clip, logo, position='top-left'):
         
         video_clip.write_videofile(path, codec='libx264')
 
-
-def resolution_changer(video_file,target_resolution=(1920, 1080), output_video= None):
-    filename = os.path.basename(video_file)
-    folder_name= str(filename).split('.')[0]
-    if not output_video:      
-        output_video = f'resized_{filename}'
-
-    original_clip = VideoFileClip(video_file)
-    original_resolution = original_clip.size
-
-    scale_y = target_resolution[1] / original_resolution[1]
-    video_clip=original_clip.resize((int(original_resolution[0] * scale_y),
-                                        int(original_resolution[1] * scale_y)))
-    resize_resolution = video_clip.size
-
-    padding_x = int((target_resolution[0] - resize_resolution[0]) / 2)
-    padding_y = int((target_resolution[1] - resize_resolution[1]) / 2)
-
-    def add_padding(frame):
-        # Pad the frame with black on all sides
-        frame_with_padding = np.pad(frame, ((padding_y, padding_y), (padding_x, padding_x), (0, 0)), mode='constant', constant_values=0)
-        return frame_with_padding
-
-    # Apply padding to each frame
-    padded_frames = [add_padding(frame) for frame in video_clip.iter_frames()]
-
-    def get_padded_frame(gf, t):
-        # Pop a frame from the list based on the time t
-        frame = padded_frames[int(t * video_clip.fps)]
-        return frame
-
-    # Create a new video clip using the padded frames
-    padded_clip = video_clip.fl(get_padded_frame)
-    media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'crvid', folder_name)
-    path = os.path.join(media_subvid_folder, output_video)
-
-    # Write the result to a new video file
-    padded_clip.write_videofile(path, codec='libx264', audio_codec='aac')
-
 def ResolutionChanger(video_file,target_resolution = (1920,1080)):       
-    cap = cv2.VideoCapture(video_file)
+    if isinstance(video_file, str):
+        cap = cv2.VideoCapture(video_file)
+    elif hasattr(video_file, 'temporary_file_path'):
+        cap = cv2.VideoCapture(video_file.temporary_file_path())
+    else:
+        raise ValueError("Invalid video_file argument")
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -243,12 +209,25 @@ def ResolutionChanger(video_file,target_resolution = (1920,1080)):
         # out.write(img_with_border_rgb)
         print(f'Processing... {perc}%')
         i += 1
+    
+    audio_temp_path = video_file.temporary_file_path()
     with ImageSequenceClip(all_frames, fps=fps) as video_clip:
-        audio = AudioFileClip(video_file)
+        audio = AudioFileClip(audio_temp_path)
         video_clip = video_clip.set_audio(audio)
         return video_clip
 
 def VideoConcatenator(video_files):
     concat_frames = [ResolutionChanger(video) for video in video_files]
     final_clip = concatenate_videoclips(concat_frames, method="compose")
-    final_clip.write_videofile('gicungduoc.mp4', codec="libx264", audio_codec="aac")
+
+    media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'concatvid')
+
+    filename = str(video_files[0].name).split('.')[0]
+    output_name = f'concatenated_video_{filename}.mp4'
+
+    path = os.path.join(media_subvid_folder, output_name)
+    
+
+    final_clip.write_videofile(path, codec="libx264", audio_codec="aac")
+    
+    return final_clip

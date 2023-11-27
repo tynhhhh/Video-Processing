@@ -12,5 +12,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('insert-logo-index/', views.InsertLogoIndex),
     path('insert-logo/', views.InsertingLogo.as_view(), name='insert-logo'),
+    path('concatenate-video-index/', views.ConcatenateVideoIndex),
+    path('concatenate-video-success/', views.ConcatenateVideo.as_view()),
 ]
 

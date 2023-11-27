@@ -9,6 +9,10 @@ class VideoSerializer(serializers.ModelSerializer):
 class VideoUploadSerializer(serializers.Serializer):
     video = serializers.FileField()
 
+class ConcatSerializer(serializers.Serializer):
+    video1 = serializers.FileField()
+    video2 = serializers.FileField()
+
 class LogoVideoSerializer(serializers.Serializer):
     video = serializers.FileField()
     logo = serializers.ImageField()

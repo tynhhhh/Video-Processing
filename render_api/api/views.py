@@ -4,11 +4,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Videos, Subclips
-from .serializers import VideoUploadSerializer, SubclipSerializer, LogoVideoSerializer
+from .serializers import VideoUploadSerializer, SubclipSerializer, LogoVideoSerializer, ConcatSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 
-from .editmodel import AutoCutting, InsertLogo, resolution_changer
+from .editmodel import AutoCutting, InsertLogo, VideoConcatenator
 import os
 from django.conf import settings
 # Create your views here.
@@ -48,13 +48,15 @@ class InsertingLogo(APIView):
         return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ResolutionChanger(APIView):
+class ConcatenateVideo(APIView):
     def post(self, request, format= None):
-        serializer= VideoUploadSerializer(data= request.data)
+        serializer= ConcatSerializer(data= request.data)
         if request.method == "POST":
             if serializer.is_valid():
-                video = serializer.validated_data['video']
-                resolution_changer(video)
+                video1 = serializer.validated_data['video1']
+                video2 = serializer.validated_data['video2']
+                lst_vid = [video1,video2]
+                concatenated_video = VideoConcatenator(lst_vid)
                 
                 return Response({'Message':'Done!'}, status=status.HTTP_200_OK)
         return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
@@ -85,3 +87,5 @@ def UploadVideo(request):
 def InsertLogoIndex(request):
     return render(request, 'insert-logo.html')
 
+def ConcatenateVideoIndex(request):
+    return render(request, 'concatenate-video-index.html')
