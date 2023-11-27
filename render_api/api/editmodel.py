@@ -246,12 +246,6 @@ def ResolutionChanger(video_file,target_resolution = (1920,1080)):
     with ImageSequenceClip(all_frames, fps=fps) as video_clip:
         audio = AudioFileClip(video_file)
         video_clip = video_clip.set_audio(audio)
-
-        # filename = str(os.path.basename(video_file)).split('.')[0]
-        # output = f'rschanged_{filename}.mp4'
-        
-        # video_clip.write_videofile(output, codec='libx264')
-
         return video_clip
 
 def VideoConcatenator(video_files):
