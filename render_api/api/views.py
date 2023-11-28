@@ -51,14 +51,22 @@ class InsertingLogo(APIView):
 class ConcatenateVideo(APIView):
     def post(self, request, format= None):
         serializer= ConcatSerializer(data= request.data)
-        if request.method == "POST":
-            if serializer.is_valid():
-                video1 = serializer.validated_data['video1']
-                video2 = serializer.validated_data['video2']
-                lst_vid = [video1,video2]
-                concatenated_video = VideoConcatenator(lst_vid)
+        # if request.method == "POST":
+        #     if serializer.is_valid():
+        #         videos = request.FILES.getlist('videos')
                 
-                return Response({'Message':'Done!'}, status=status.HTTP_200_OK)
+        #         if not videos or len(videos) < 2:
+        #             return Response({'message': 'Please upload at least two videos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #         try:
+        #             concatenated_video = VideoConcatenator(videos)
+        #             return Response({'message': 'Videos concatenated successfully.'}, status=status.HTTP_200_OK)
+
+        #         except Exception as e:
+        #             return Response({'message': f'Error concatenating videos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        print(serializer)
         return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
 
 class SubclipViewSet(viewsets.ModelViewSet):

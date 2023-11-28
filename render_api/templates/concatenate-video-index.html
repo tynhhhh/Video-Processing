@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Concatenation</title>
+    <title>Video Concatenation Test</title>
 </head>
 <body>
+    <h1>Video Concatenation Test</h1>
     
-    <form method="post" action='/concatenate-video-success/' enctype="multipart/form-data">
+    <form action="/concatenate-video-success/" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <span> Video 1 </span>
-        <input type="file" name="video1">
-        <span> Video 2 </span>
-        <input type="file" name="video2">
-        <input type="submit" value="Upload Video">
+
+        <!-- Input for the first video file -->
+        <label for="video1">Video 1:</label>
+        <input type="file" name="videos" accept="video/*" id="video1" required>
+
+        <!-- Input for the second video file -->
+        <label for="video2">Video 2:</label>
+        <input type="file" name="videos" accept="video/*" id="video2" required>
+
+        <!-- Add more inputs as needed for additional videos -->
+
+        <button type="submit">Concatenate Videos</button>
     </form>
 </body>
 </html>

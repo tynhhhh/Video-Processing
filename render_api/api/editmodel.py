@@ -218,16 +218,23 @@ def ResolutionChanger(video_file,target_resolution = (1920,1080)):
 
 def VideoConcatenator(video_files):
     concat_frames = [ResolutionChanger(video) for video in video_files]
+
+    # Combine the clips into a single concatenated clip
     final_clip = concatenate_videoclips(concat_frames, method="compose")
 
     media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'concatvid')
 
-    filename = str(video_files[0].name).split('.')[0]
-    output_name = f'concatenated_video_{filename}.mp4'
+    # Extract the base filename from the first video file
+    if video_files and isinstance(video_files[0], TemporaryUploadedFile):
+        filename = os.path.splitext(video_files[0].name)[0]
+    else:
+        filename = 'concatenated_video'
 
+    output_name = f'concatenated_video_{filename}.mp4'
     path = os.path.join(media_subvid_folder, output_name)
-    
+
+    os.makedirs(media_subvid_folder, exist_ok=True)
 
     final_clip.write_videofile(path, codec="libx264", audio_codec="aac")
-    
+
     return final_clip
