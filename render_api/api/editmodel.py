@@ -200,8 +200,8 @@ def ResolutionChanger(video_file,target_resolution = (1920,1080)):
 
         # Convert from BGR to RGB
         img_with_border_rgb = cv2.cvtColor(img_with_border, cv2.COLOR_BGR2RGB)
-
-        all_frames.append(frame)
+        # Change "frame" into "img_with_border_rgb" get concatenate original color and the same resolution (1920,1080)
+        all_frames.append(frame) # img_with_border_rgb
 
         perc = round(i / int(frame_count) * 100, 2)
         
