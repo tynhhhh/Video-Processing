@@ -5,20 +5,50 @@ import cv2
 from api.models import Subclips, ParentFolder
 import random
 import numpy as np
-
+from joblib import Parallel, delayed
+from tempfile import NamedTemporaryFile
 from django.core.files.uploadedfile import TemporaryUploadedFile
 
-def AutoCutting(file_clip, dur_input):
+def output_path(parent_folder_name, folder_name, output_name):
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    media_subvid_folder = os.path.join(settings.MEDIA_ROOT, parent_folder_name, folder_name)
+    outputname = str(output_name).split('.')[0]
+    unique_name = f'{outputname}_{timestamp}'
+    
+    path = os.path.join(media_subvid_folder, f"{unique_name}_.mp4")
+    os.makedirs(media_subvid_folder, exist_ok=True)
+    return path
+
+def TypeChecker_CV2(file_clip):
+    if isinstance(file_clip, str):
+        return cv2.VideoCapture(file_clip)
+    elif hasattr(file_clip, 'temporary_file_path'):
+        return cv2.VideoCapture(file_clip.temporary_file_path())
+    else:
+        raise ValueError("Invalid file_clip argument")
+
+def TypeChecker_MVP(file_clip):
+    if isinstance(file_clip, TemporaryUploadedFile):
+        # Use the temporary file directly
+        clip = file_clip.temporary_file_path() if hasattr(file_clip, 'temporary_file_path') else None
+    else:
+        clip = file_clip
+    return clip
+
+def ListChecker(file_clip):
     if type(file_clip) is not list:
-        file_clip = list([file_clip])
+        return list([file_clip])
 
-    for a_clip in file_clip:
-        if isinstance(a_clip, TemporaryUploadedFile):
-            # Use the temporary file directly
-            a_clip_name = a_clip.temporary_file_path() if hasattr(a_clip, 'temporary_file_path') else None
-        else:
-            a_clip_name = a_clip
+def WriteVideo(video_frames,path):
+    video_frames.write_videofile(path, codec='libx264', audio_codec='aac')
 
+
+# API cutting original video into sub videos
+def AutoCutting(file_clips, dur_input):
+    file_clips = ListChecker(file_clips)
+
+    for a_clip in file_clips:
+        a_clip_name = TypeChecker_MVP(a_clip)
         if a_clip_name:
             clip = VideoFileClip(a_clip_name)
 
@@ -49,15 +79,13 @@ def AutoCutting(file_clip, dur_input):
                 subclip = Subclips(subclip_file=subclip_relative_path, duration=sub_clip.duration, parent_clip=parent_folder)
                 subclip.save()
 
-                # Define the absolute file path to save the subclip
-                media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'subvid', folder_name)
-                path = os.path.join(media_subvid_folder, output_name)
-
-                os.makedirs(media_subvid_folder, exist_ok=True)
+                path = output_path('subvid', folder_name, output_name)
 
                 sub_clip.write_videofile(path, codec='libx264')
 
             clip.close()
+
+            
 
 
 from moviepy.editor import VideoFileClip
@@ -65,16 +93,10 @@ from django.core.files.storage import default_storage
 import tempfile
 
 
-
+# API inserting logo
 def InsertLogo(file_clip, logo, position='top-left'):
-    if isinstance(file_clip, str):
-        vid = cv2.VideoCapture(file_clip)
-    elif hasattr(file_clip, 'temporary_file_path'):
-        vid = cv2.VideoCapture(file_clip.temporary_file_path())
-    else:
-        raise ValueError("Invalid file_clip argument")
+    vid = TypeChecker_CV2(file_clip)
 
-    media_logovid_folder = os.path.join(settings.MEDIA_ROOT, 'logovid')
     file_name = os.path.splitext(file_clip.name)[0]
     folder_name = file_name
     fps = vid.get(cv2.CAP_PROP_FPS)
@@ -155,21 +177,16 @@ def InsertLogo(file_clip, logo, position='top-left'):
        
         os.remove(logo_path)
 
-        media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'logovid', folder_name)
         output_name = f'logo_inserted_{file_name}'
-        path = os.path.join(media_subvid_folder, output_name)
+        path = output_path('logovid',folder_name, output_name)
         
-        os.makedirs(media_subvid_folder, exist_ok=True)
         
-        video_clip.write_videofile(path, codec='libx264')
+        return video_clip, path
 
+
+# API concatenator
 def ResolutionChanger(video_file,target_resolution = (1920,1080)):       
-    if isinstance(video_file, str):
-        cap = cv2.VideoCapture(video_file)
-    elif hasattr(video_file, 'temporary_file_path'):
-        cap = cv2.VideoCapture(video_file.temporary_file_path())
-    else:
-        raise ValueError("Invalid video_file argument")
+    cap = TypeChecker_CV2(video_file)
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -204,9 +221,7 @@ def ResolutionChanger(video_file,target_resolution = (1920,1080)):
         all_frames.append(frame) # img_with_border_rgb
 
         perc = round(i / int(frame_count) * 100, 2)
-        
 
-        # out.write(img_with_border_rgb)
         print(f'Processing... {perc}%')
         i += 1
     
@@ -222,19 +237,49 @@ def VideoConcatenator(video_files):
     # Combine the clips into a single concatenated clip
     final_clip = concatenate_videoclips(concat_frames, method="compose")
 
-    media_subvid_folder = os.path.join(settings.MEDIA_ROOT, 'concatvid')
-
     # Extract the base filename from the first video file
     if video_files and isinstance(video_files[0], TemporaryUploadedFile):
         filename = os.path.splitext(video_files[0].name)[0]
+        output_name = f'concatenated_video_{filename}.mp4'
     else:
-        filename = 'concatenated_video'
+        output_name = 'concatenated_video.mp4'
 
-    output_name = f'concatenated_video_{filename}.mp4'
-    path = os.path.join(media_subvid_folder, output_name)
+    path = output_path('concatvid', filename, output_name)
 
-    os.makedirs(media_subvid_folder, exist_ok=True)
+    return final_clip, path
 
-    final_clip.write_videofile(path, codec="libx264", audio_codec="aac")
+# API bluring video
 
-    return final_clip
+def process_frame_parallel(frame, blur_strength=15):
+    # Apply Gaussian blur to the frame
+    blurred_frame = cv2.GaussianBlur(frame, (blur_strength, blur_strength), 0)
+    return blurred_frame
+
+from datetime import datetime
+
+
+
+def BluringVideo(video_file, blur_strength=15, num_jobs=-1):
+    vid = TypeChecker_MVP(video_file)
+    if not vid:
+        return 0
+    
+    video_clip = VideoFileClip(vid)
+    fps=video_clip.fps
+    # Process frames in parallel
+    processed_frames = Parallel(n_jobs=num_jobs, backend='threading')(
+        delayed(process_frame_parallel)(frame, blur_strength) for frame in video_clip.iter_frames()
+    )
+
+    with ImageSequenceClip(processed_frames, fps=fps) as blurred_clip:
+        audio = AudioFileClip(video_file.temporary_file_path())
+        blurred_clip = blurred_clip.set_audio(audio)
+
+        outputname = video_file.name
+        foldername = os.path.splitext(outputname)[0]
+        path = output_path('blurvid', foldername, outputname)
+ 
+        return blurred_clip, path
+
+    
+

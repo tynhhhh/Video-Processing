@@ -1,1 +1,5 @@
-hello world
+- access folder video render project
+- open terminal
+- enter "venv\Scripts\activate"
+- access folder render_api
+- run "python manage.py runserver"

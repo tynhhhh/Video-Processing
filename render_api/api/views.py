@@ -8,12 +8,12 @@ from .serializers import VideoUploadSerializer, SubclipSerializer, LogoVideoSeri
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 
-from .editmodel import AutoCutting, InsertLogo, VideoConcatenator
+from .editmodel import *
 import os
 from django.conf import settings
 # Create your views here.
 
-class VideoUploadView(APIView):
+class CuttingVideo(APIView):
     parser_classes = (MultiPartParser, FormParser)
     
     def post(self, request, format=None):
@@ -25,7 +25,7 @@ class VideoUploadView(APIView):
             if serializer.is_valid():
 
                 video = serializer.validated_data['video']
-                Videos.objects.create(video_file=video)
+                # Videos.objects.create(video_file=video)
                 AutoCutting(file_clip=video, dur_input=clipduration)
 
             return Response({'message': 'Video has been splitted successfully'}, status=status.HTTP_201_CREATED)
@@ -41,7 +41,8 @@ class InsertingLogo(APIView):
                 video = serializer.validated_data['video']
                 logo = serializer.validated_data['logo']
 
-                InsertLogo(video, logo)
+                InsertedLogoVideo, video_path= InsertLogo(video, logo)
+                WriteVideo(InsertedLogoVideo, video_path)
 
                 return Response({"Message": 'Done!'}, status=status.HTTP_200_OK)
 
@@ -58,13 +59,32 @@ class ConcatenateVideo(APIView):
                     return Response({'message': 'Please upload at least two videos.'}, status=status.HTTP_400_BAD_REQUEST)
 
                 try:
-                    concatenated_video = VideoConcatenator(videos)
+                    concatenated_video, video_path = VideoConcatenator(videos)
+                    WriteVideo(concatenated_video, video_path)
                     return Response({'message': 'Videos concatenated successfully.'}, status=status.HTTP_200_OK)
 
                 except Exception as e:
                     return Response({'message': f'Error concatenating videos: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+class BluringVideoAPI(APIView):
+    def post(self, request, format=None):
+        serializer = VideoUploadSerializer(data=request.data)
+
+        if not request.method == "POST":
+            return Response({"Message": "Reuired post method!"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if serializer.is_valid():
+            video = serializer.validated_data['video']
+
+            blurvideo, video_path = BluringVideo(video_file= video)
+            WriteVideo(blurvideo, video_path)
+            
+
+            return Response({"Message": 'Done!'}, status=status.HTTP_200_OK)
+
+        return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
 
 class SubclipViewSet(viewsets.ModelViewSet):
     queryset = Subclips.objects.all()
@@ -81,6 +101,7 @@ class SubclipViewSet(viewsets.ModelViewSet):
         serializer = SubclipSerializer(subclips, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 class SubclipsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subclips.objects.all()
     serializer_class = SubclipSerializer
@@ -94,3 +115,6 @@ def InsertLogoIndex(request):
 
 def ConcatenateVideoIndex(request):
     return render(request, 'concatenate-video-index.html')
+
+def BluringVideoIndex(request):
+    return render(request, 'bluring-video-index.html')
