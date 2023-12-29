@@ -86,6 +86,25 @@ class BluringVideoAPI(APIView):
 
         return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
 
+class SpeedChangerAPI(APIView):
+    def post(self, request, format=None):
+        serializer = VideoUploadSerializer(data=request.data)
+
+        if not request.method == "POST":
+            return Response({"Message": "Reuired post method!"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if serializer.is_valid():
+            video = serializer.validated_data['video']
+            speed_factor = float(request.POST.get('speedfactor'))
+
+            sc_video, video_path, fps= ChangingSpeed(video_file= video, speed_factor= speed_factor)
+            # WriteVideo(sc_video, video_path, fps)
+            
+
+            return Response({"Message": 'Done!'}, status=status.HTTP_200_OK)
+
+        return Response({"Message": "Error!"}, status=status.HTTP_400_BAD_REQUEST)
+
 class SubclipViewSet(viewsets.ModelViewSet):
     queryset = Subclips.objects.all()
     serializer_class = SubclipSerializer
@@ -118,3 +137,6 @@ def ConcatenateVideoIndex(request):
 
 def BluringVideoIndex(request):
     return render(request, 'bluring-video-index.html')
+
+def SpeedChangerIndex(request):
+    return render(request, 'speed-changer-index.html')

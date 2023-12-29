@@ -16,5 +16,7 @@ urlpatterns = [
     path('concatenate-video-success/', views.ConcatenateVideo.as_view(), name= 'concatenate-video'),
     path('bluring-video-index/', views.BluringVideoIndex),
     path('bluring-video-success/', views.BluringVideoAPI.as_view(), name='bluring-video'),
+    path('speed-changer-index/', views.SpeedChangerIndex),
+    path('speed-changer-success/', views.SpeedChangerAPI.as_view()),
 ]
 

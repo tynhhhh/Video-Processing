@@ -1,5 +1,8 @@
 from moviepy.editor import VideoFileClip, AudioFileClip, ImageSequenceClip, concatenate_videoclips
+import moviepy.video.fx.all as vfx
+from pydub import AudioSegment
 from django.conf import settings
+import librosa
 import os
 import cv2
 from api.models import Subclips, ParentFolder
@@ -39,8 +42,13 @@ def ListChecker(file_clip):
     if type(file_clip) is not list:
         return list([file_clip])
 
-def WriteVideo(video_frames,path):
-    video_frames.write_videofile(path, codec='libx264', audio_codec='aac')
+def WriteVideo(video_frames, path, fps=None):
+
+    if not fps:
+        video_frames.write_videofile(path, codec='libx264', audio_codec='aac')
+    else:
+        video_frames.write_videofile(path, codec="libx264", audio_codec="aac", fps=fps)
+
 
 
 # API cutting original video into sub videos
@@ -278,8 +286,61 @@ def BluringVideo(video_file, blur_strength=15, num_jobs=-1):
         outputname = video_file.name
         foldername = os.path.splitext(outputname)[0]
         path = output_path('blurvid', foldername, outputname)
- 
+
         return blurred_clip, path
 
-    
+
+def ChangingSpeed(video_file, speed_factor):
+    video_path = TypeChecker_MVP(video_file)  # Corrected from 'video_path' to 'video_file'
+    if not video_path:
+        return 0
+
+    video_name = os.path.basename(video_path)
+    output_name = f'sc_{video_name}'
+
+    clip = VideoFileClip(video_path)
+    fps=clip.fps
+    # Speed up the video by a factor of 2
+    speedup_clip = clip.fx(vfx.speedx, speed_factor)
+
+    # Extract audio from the original video
+    original_audio = clip.audio
+
+    # Save the audio to a temporary WAV file
+    temp_audio_name = 'temp_file.wav'
+    temp_audio_path = os.path.join(settings.TEMP_DIR, temp_audio_name)
+
+    original_audio.write_audiofile(temp_audio_path, codec='pcm_s16le', fps=original_audio.fps)
+
+    # Load the audio using librosa
+    song, fs = librosa.load(temp_audio_path)
+
+    # Use librosa to stretch the audio without changing pitch
+    song_2_times_faster = librosa.effects.time_stretch(song, rate=speed_factor)
+
+    # Convert the NumPy array to an AudioSegment using pydub
+    audio_segment = AudioSegment(
+        np.array(np.int16(song_2_times_faster * 32767), dtype=np.int16).tobytes(),
+        frame_rate=fs,
+        sample_width=2,
+        channels=1
+    )
+    audio_segment.export(temp_audio_path)
+
+    audio = AudioFileClip(temp_audio_path)
+    # Set the sped-up audio to the video clip
+    final_clip = speedup_clip.set_audio(audio)
+
+    # Export the final video
+    path = output_path('scvid', video_name, output_name)
+    # final_clip.write_videofile(path, codec="libx264", audio_codec="aac", fps=clip.fps)
+
+    # Close the video clips
+    clip.close()
+    speedup_clip.close()
+    final_clip.close()
+    os.remove(temp_audio_path)
+    print(final_clip)
+    return final_clip, path, fps
+
 
